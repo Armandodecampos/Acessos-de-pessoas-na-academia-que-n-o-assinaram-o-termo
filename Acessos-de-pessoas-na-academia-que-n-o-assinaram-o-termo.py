@@ -56,7 +56,7 @@ class AppCruzadorExcel(tk.Tk):
 
         sub_lbl = tk.Label(
             header_frame,
-            text="Cole os dados copiados do Excel (Ctrl+C) em cada guia e clique em EXECUTAR CRUZAMENTO.",
+            text="Carregue os arquivos de cada guia e clique em EXECUTAR CRUZAMENTO.",
             font=("Segoe UI", 9),
             fg=self.TEXT_MUTED,
             bg=self.CARD_BG,
@@ -84,7 +84,7 @@ class AppCruzadorExcel(tk.Tk):
 
         self.lbl_status = tk.Label(
             control_frame,
-            text="Aguardando preenchimento: Guia 1 e Guia 2 são obrigatórias",
+            text="Aguardando carregamento de arquivos: Guia 1 e Guia 2 são obrigatórias",
             font=("Segoe UI", 10, "bold"),
             fg=self.TEXT_MUTED,
             bg=self.BG_DARK,
@@ -157,24 +157,24 @@ class AppCruzadorExcel(tk.Tk):
 
         self.lbl_guia1_status = tk.Label(
             btn_frame,
-            text="✖ NENHUM DADO COLADO",
+            text="✖ NENHUM ARQUIVO CARREGADO",
             font=("Segoe UI", 9, "bold"),
             fg=self.ACCENT_RED,
             bg=self.CARD_BG,
         )
         self.lbl_guia1_status.pack(side=tk.LEFT)
 
-        btn_colar = tk.Button(
+        btn_carregar = tk.Button(
             btn_frame,
-            text="📋 Colar Dados do Excel (Ctrl+V)",
+            text="📁 Carregar Arquivo (Excel / CSV)",
             font=("Segoe UI", 9, "bold"),
             bg=self.ACCENT_BLUE,
             fg="#ffffff",
             padx=12,
             pady=4,
-            command=lambda: self._colar_area_transferencia(1),
+            command=lambda: self._carregar_arquivo(1),
         )
-        btn_colar.pack(side=tk.LEFT, padx=15)
+        btn_carregar.pack(side=tk.LEFT, padx=15)
 
         btn_limpar = tk.Button(
             btn_frame,
@@ -217,24 +217,24 @@ class AppCruzadorExcel(tk.Tk):
 
         self.lbl_guia2_status = tk.Label(
             btn_frame,
-            text="✖ NENHUM DADO COLADO",
+            text="✖ NENHUM ARQUIVO CARREGADO",
             font=("Segoe UI", 9, "bold"),
             fg=self.ACCENT_RED,
             bg=self.CARD_BG,
         )
         self.lbl_guia2_status.pack(side=tk.LEFT)
 
-        btn_colar = tk.Button(
+        btn_carregar = tk.Button(
             btn_frame,
-            text="📋 Colar Dados do Excel (Ctrl+V)",
+            text="📁 Carregar Arquivo (Excel / CSV)",
             font=("Segoe UI", 9, "bold"),
             bg=self.ACCENT_BLUE,
             fg="#ffffff",
             padx=12,
             pady=4,
-            command=lambda: self._colar_area_transferencia(2),
+            command=lambda: self._carregar_arquivo(2),
         )
-        btn_colar.pack(side=tk.LEFT, padx=15)
+        btn_carregar.pack(side=tk.LEFT, padx=15)
 
         btn_limpar = tk.Button(
             btn_frame,
@@ -277,24 +277,24 @@ class AppCruzadorExcel(tk.Tk):
 
         self.lbl_guia3_status = tk.Label(
             btn_frame,
-            text="⚪ NENHUM DADO COLADO (OPCIONAL)",
+            text="⚪ NENHUM ARQUIVO CARREGADO (OPCIONAL)",
             font=("Segoe UI", 9, "bold"),
             fg=self.TEXT_MUTED,
             bg=self.CARD_BG,
         )
         self.lbl_guia3_status.pack(side=tk.LEFT)
 
-        btn_colar = tk.Button(
+        btn_carregar = tk.Button(
             btn_frame,
-            text="📋 Colar Dados do Excel (Ctrl+V)",
+            text="📁 Carregar Arquivo (Excel / CSV)",
             font=("Segoe UI", 9, "bold"),
             bg=self.ACCENT_BLUE,
             fg="#ffffff",
             padx=12,
             pady=4,
-            command=lambda: self._colar_area_transferencia(3),
+            command=lambda: self._carregar_arquivo(3),
         )
-        btn_colar.pack(side=tk.LEFT, padx=15)
+        btn_carregar.pack(side=tk.LEFT, padx=15)
 
         btn_limpar = tk.Button(
             btn_frame,
@@ -354,66 +354,91 @@ class AppCruzadorExcel(tk.Tk):
 
         return tree
 
-    def _colar_area_transferencia(self, num_guia):
-        """Lê a área de transferência do Excel de forma segura forçando tipo string."""
+    def _carregar_arquivo(self, num_guia):
+        """Abre diálogo para seleção de arquivo (Excel ou CSV) e carrega os dados."""
+        filepath = filedialog.askopenfilename(
+            title=f"Selecionar arquivo para Guia {num_guia}",
+            filetypes=[
+                ("Arquivos de Tabela", "*.xlsx *.xls *.csv *.tsv *.txt"),
+                ("Arquivos Excel", "*.xlsx *.xls"),
+                ("Arquivos CSV/Texto", "*.csv *.tsv *.txt"),
+                ("Todos os arquivos", "*.*"),
+            ],
+        )
+        if not filepath:
+            return
+
         try:
-            texto_clipboard = self.clipboard_get()
-            if not texto_clipboard or not texto_clipboard.strip():
-                messagebox.showwarning("Aviso", "A área de transferência está vazia.")
+            df_raw = self._ler_arquivo_df(filepath)
+            if df_raw is None or df_raw.empty:
+                messagebox.showwarning(
+                    "Aviso", "O arquivo selecionado está vazio ou não pôde ser lido."
+                )
                 return
 
-            # Leitura robusta usando pd.read_csv com io.StringIO para forçar dtype=str
-            try:
-                df_raw = pd.read_csv(
-                    io.StringIO(texto_clipboard),
-                    sep="\t",
-                    dtype=str,
-                    header=None,
-                    keep_default_na=False,
-                    engine="python",
-                )
-            except Exception:
-                # Fallback manual caso o parser falhe
-                linhas = [l for l in texto_clipboard.splitlines() if l.strip()]
-                dados_matriz = [linha.split("\t") for linha in linhas]
-                df_raw = pd.DataFrame(dados_matriz, dtype=str)
-
-            # Garante que valores nulos sejam convertidos em string vazia
-            df_raw = df_raw.fillna("")
-
-            # Limpeza geral de strings e remoção de quebras ocultas
-            for col in df_raw.columns:
-                df_raw[col] = (
-                    df_raw[col]
-                    .astype(str)
-                    .str.strip()
-                    .str.replace(r'[\r\n"]', "", regex=True)
-                )
+            df_tratado = self._tratar_cabecalhos(df_raw, num_guia)
+            nome_arquivo = os.path.basename(filepath)
 
             if num_guia == 1:
-                self.df_guia1 = self._tratar_cabecalhos(df_raw, 1)
+                self.df_guia1 = df_tratado
                 self._atualizar_preview(
-                    self.tree1, self.lbl_guia1_status, self.df_guia1, 1
+                    self.tree1, self.lbl_guia1_status, self.df_guia1, 1, nome_arquivo
                 )
             elif num_guia == 2:
-                self.df_guia2 = self._tratar_cabecalhos(df_raw, 2)
+                self.df_guia2 = df_tratado
                 self._atualizar_preview(
-                    self.tree2, self.lbl_guia2_status, self.df_guia2, 2
+                    self.tree2, self.lbl_guia2_status, self.df_guia2, 2, nome_arquivo
                 )
             elif num_guia == 3:
-                self.df_guia3 = self._tratar_cabecalhos(df_raw, 3)
+                self.df_guia3 = df_tratado
                 self._atualizar_preview(
-                    self.tree3, self.lbl_guia3_status, self.df_guia3, 3
+                    self.tree3, self.lbl_guia3_status, self.df_guia3, 3, nome_arquivo
                 )
 
             self._validar_liberacao_botao()
 
         except Exception as e:
             messagebox.showerror(
-                "Erro ao Colar Dados",
-                f"Não foi possível processar os dados colados:\n{str(e)}\n\n"
-                "Dica: Selecione as células no Excel e pressione Ctrl+C antes de clicar aqui.",
+                "Erro ao Carregar Arquivo",
+                f"Não foi possível processar o arquivo selecionado:\n{str(e)}",
             )
+
+    def _ler_arquivo_df(self, filepath):
+        """Lê um arquivo Excel ou CSV/TSV e retorna um DataFrame com dtypes em string."""
+        ext = os.path.splitext(filepath)[1].lower()
+        if ext in [".xlsx", ".xls"]:
+            df_raw = pd.read_excel(filepath, header=None, dtype=str)
+        else:
+            try:
+                df_raw = pd.read_csv(
+                    filepath,
+                    sep=None,
+                    dtype=str,
+                    header=None,
+                    keep_default_na=False,
+                    engine="python",
+                )
+            except Exception:
+                df_raw = pd.read_csv(
+                    filepath,
+                    sep="\t",
+                    dtype=str,
+                    header=None,
+                    keep_default_na=False,
+                    engine="python",
+                )
+
+        df_raw = df_raw.fillna("")
+
+        for col in df_raw.columns:
+            df_raw[col] = (
+                df_raw[col]
+                .astype(str)
+                .str.strip()
+                .str.replace(r'[\r\n"]', "", regex=True)
+            )
+
+        return df_raw
 
     def _tratar_cabecalhos(self, df_raw, num_guia):
         """Localiza a linha de cabeçalho através de palavras-chave nas primeiras 10 linhas."""
@@ -447,7 +472,7 @@ class AppCruzadorExcel(tk.Tk):
 
         return df
 
-    def _atualizar_preview(self, tree, label, df, num_guia):
+    def _atualizar_preview(self, tree, label, df, num_guia, nome_arquivo=""):
         """Atualiza visualmente a tabela na interface gráfica prevenindo erros de tipo float."""
         tree.delete(*tree.get_children())
         cols = [str(c) for c in df.columns]
@@ -467,7 +492,8 @@ class AppCruzadorExcel(tk.Tk):
         for idx, row in df.head(300).iterrows():
             tree.insert("", "end", values=[str(v) for v in row])
 
-        msg = f"✔ DADOS CARREGADOS ({len(df)} registros)"
+        info_file = f" ({nome_arquivo})" if nome_arquivo else ""
+        msg = f"✔ DADOS CARREGADOS{info_file} ({len(df)} registros)"
         color = self.ACCENT_GREEN if num_guia != 3 else self.ACCENT_BLUE
         label.config(text=msg, fg=color)
 
@@ -477,19 +503,19 @@ class AppCruzadorExcel(tk.Tk):
             self.df_guia1 = None
             self.tree1.delete(*self.tree1.get_children())
             self.lbl_guia1_status.config(
-                text="✖ NENHUM DADO COLADO", fg=self.ACCENT_RED
+                text="✖ NENHUM ARQUIVO CARREGADO", fg=self.ACCENT_RED
             )
         elif num_guia == 2:
             self.df_guia2 = None
             self.tree2.delete(*self.tree2.get_children())
             self.lbl_guia2_status.config(
-                text="✖ NENHUM DADO COLADO", fg=self.ACCENT_RED
+                text="✖ NENHUM ARQUIVO CARREGADO", fg=self.ACCENT_RED
             )
         elif num_guia == 3:
             self.df_guia3 = None
             self.tree3.delete(*self.tree3.get_children())
             self.lbl_guia3_status.config(
-                text="⚪ NENHUM DADO COLADO (OPCIONAL)", fg=self.TEXT_MUTED
+                text="⚪ NENHUM ARQUIVO CARREGADO (OPCIONAL)", fg=self.TEXT_MUTED
             )
 
         self._validar_liberacao_botao()
@@ -515,7 +541,7 @@ class AppCruzadorExcel(tk.Tk):
                 pendentes.append("Guia 2")
             self.btn_iniciar.config(state=tk.DISABLED, bg="#555566", fg="#888899")
             self.lbl_status.config(
-                text=f"Aguardando preenchimento: {', '.join(pendentes)}",
+                text=f"Aguardando carregamento de arquivos: {', '.join(pendentes)}",
                 fg=self.TEXT_MUTED,
             )
 
