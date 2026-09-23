@@ -264,7 +264,7 @@ class AppCruzadorExcel(tk.Tk):
         lbl = tk.Label(
             inst_frame,
             text="Coluna esperada: ID / Número do Cartão.\n"
-            "📌 Todos os cartões informados nesta guia serão AUTOMATICAMENTE EXCLUÍDOS/REMOVIDOS do resultado final.",
+            "📌 Serão MANTIDOS no resultado final apenas os registros cujos cartões estiverem presentes nesta guia.",
             font=("Segoe UI", 8),
             fg=self.TEXT_MUTED,
             bg=self.CARD_BG,
@@ -551,7 +551,7 @@ class AppCruzadorExcel(tk.Tk):
         1. VLOOKUP do Número do Cartão, Nome e Sobrenome da Guia 2 para a Guia 1 via 'ID Pessoal'.
         2. Padronização e filtro automático para 'Entrada Academia' e 'Saída Academia'.
         3. Exclusão automática de registros sem número de cartão.
-        4. Exclusão automática dos cartões presentes na Guia 3.
+        4. Manutenção automática dos cartões presentes na Guia 3 (se a Guia 3 for fornecida).
         """
         try:
             df1 = self.df_guia1.copy()
@@ -661,7 +661,7 @@ class AppCruzadorExcel(tk.Tk):
                 df1[col_cartao_g1].apply(normalizar) != ""
             ].copy()
 
-            # 3. Remoção OBRIGATÓRIA dos cartões presentes na Guia 3
+            # 3. Manutenção OBRIGATÓRIA dos cartões presentes na Guia 3 (filtro de inclusão)
             if df3 is not None and not df3.empty:
                 col_id_g3 = self._encontrar_coluna(
                     df3,
@@ -679,7 +679,7 @@ class AppCruzadorExcel(tk.Tk):
                     col_cartao_g1
                 ].apply(normalizar)
                 df_final = df_filtrado[
-                    ~df_filtrado["_TEMP_KEY_CARTAO"].isin(set_cartoes_g3)
+                    df_filtrado["_TEMP_KEY_CARTAO"].isin(set_cartoes_g3)
                 ].copy()
                 df_final = df_final.drop(columns=["_TEMP_KEY_CARTAO"])
             else:
@@ -714,7 +714,7 @@ class AppCruzadorExcel(tk.Tk):
                 f"• Cartões Vinculados do Cadastro: {cartoes_preenchidos}\n"
                 f"• Registros Finais Mantidos: {total_final}\n\n"
                 f"• Regras aplicadas:\n"
-                f"  - Cartões da Guia 3 removidos\n"
+                f"  - Mantidos apenas os cartões presentes na Guia 3\n"
                 f"  - Eventos sem cartão excluídos\n"
                 f"  - Dispositivos padronizados para Entrada/Saída Academia",
             )

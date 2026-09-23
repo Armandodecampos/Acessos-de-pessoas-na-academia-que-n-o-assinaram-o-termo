@@ -43,7 +43,7 @@ class TestAppCruzadorExcel(unittest.TestCase):
         ])
         df2_data.to_csv(self.csv_guia2_path, index=False, header=False, sep="\t")
 
-        # Guia 3 Excel data
+        # Guia 3 Excel data (contains CARD333 to keep)
         df3_data = pd.DataFrame([
             ["Número do Cartão"],
             ["CARD333"]
@@ -110,15 +110,15 @@ class TestAppCruzadorExcel(unittest.TestCase):
             self.app._processar_dados()
 
         self.assertIsNotNone(self.app.df_resultado)
-        # P001 -> CARD111 (kept)
-        # P002 -> CARD222 (kept)
-        # P003 -> CARD333 (filtered out by Guia 3)
-        # Expected final count: 2
-        self.assertEqual(len(self.app.df_resultado), 2)
+        # P001 -> CARD111 (filtered out because not in Guia 3)
+        # P002 -> CARD222 (filtered out because not in Guia 3)
+        # P003 -> CARD333 (kept because present in Guia 3)
+        # Expected final count: 1
+        self.assertEqual(len(self.app.df_resultado), 1)
         cartoes_finais = list(self.app.df_resultado["Número do Cartão"])
-        self.assertIn("CARD111", cartoes_finais)
-        self.assertIn("CARD222", cartoes_finais)
-        self.assertNotIn("CARD333", cartoes_finais)
+        self.assertIn("CARD333", cartoes_finais)
+        self.assertNotIn("CARD111", cartoes_finais)
+        self.assertNotIn("CARD222", cartoes_finais)
 
 
 if __name__ == "__main__":
